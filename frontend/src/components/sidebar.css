@@ -1,0 +1,86 @@
+/* sidebar.css */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 240px;
+  background-color: #1f2937; /* màu xám đậm */
+  color: #f9fafb; /* màu trắng */
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.sidebar h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+.sidebar nav {
+  flex-grow: 1;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar li {
+  margin-bottom: 1rem;
+}
+
+.sidebar a {
+  color: #d1d5db; /* màu xám nhạt */
+  text-decoration: none;
+  font-size: 1.1rem;
+  display: block;
+  padding: 10px 15px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sidebar a:hover {
+  background-color: #374151; /* màu xám đậm hơn khi hover */
+  color: #60a5fa; /* màu xanh dương */
+}
+
+/* Responsive: ẩn sidebar trên màn hình nhỏ */
+@media (max-width: 768px) {
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    padding: 10px 15px;
+    overflow-x: auto;
+  }
+  .sidebar h2 {
+    display: none;
+  }
+  .sidebar nav {
+    flex-grow: 0;
+  }
+  .sidebar ul {
+    display: flex;
+    gap: 15px;
+  }
+  .sidebar li {
+    margin-bottom: 0;
+  }
+  .sidebar a {
+    padding: 8px 12px;
+    font-size: 1rem;
+  }
+}
