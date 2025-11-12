@@ -1,0 +1,61 @@
+/* App layout - Tích hợp với navbar.css và sidebar.css */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f0f4f8; /* Theme Smart Home */
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Layout cho trang auth (đăng nhập): Full width, không Sidebar */
+.auth-layout {
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(0, 123, 255, 0.05), rgba(40, 167, 69, 0.05)); /* Subtle theme */
+}
+
+/* Layout cho trang protected: Sidebar bên trái + main bên phải */
+.protected-layout {
+  margin-top: 60px; /* Chiều cao Navbar */
+}
+
+/* Page content: Linh hoạt */
+.page-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  margin-left: 0 !important; /* Đảm bảo không có margin trái trên trang đăng nhập */
+  background-color: #f8f9fa;
+}
+
+/* Responsive: Mobile - Ẩn margin, Sidebar collapse */
+@media (max-width: 768px) {
+  .protected-layout {
+    flex-direction: column;
+    margin-top: 0; /* Navbar responsive rồi */
+  }
+  
+  .page-content {
+    margin-left: 0;
+    padding: 10px;
+  }
+  
+  /* Sidebar trên mobile: Ẩn mặc định, toggle nếu cần (thêm JS ở Sidebar nếu muốn) */
+  .sidebar {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 1000;
+    height: calc(100vh - 60px); /* Trừ Navbar */
+  }
+  
+  .sidebar.open { /* Thêm class 'open' qua state ở Navbar/Sidebar nếu cần toggle */
+    transform: translateX(0);
+  }
+}

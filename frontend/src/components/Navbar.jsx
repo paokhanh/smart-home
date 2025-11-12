@@ -1,49 +1,106 @@
-import React, { useState } from "react"
-import "./navbar.css"
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import "./navbar.css";
 
 function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser ] = useState(null);
+  const navigate = useNavigate();
+
+  // Lấy user từ localStorage khi component mount
+  useEffect(() => {
+    const storedUser  = localStorage.getItem("user");
+    if (storedUser ) {
+      setUser (JSON.parse(storedUser ));
+    }
+  }, []);
+
+  // Hàm tạo màu nền ngẫu nhiên cho logo chữ cái
+  const getRandomColor = (seed) => {
+    // Tạo màu dựa trên seed (tên user) để màu không thay đổi mỗi lần render
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+    return "#" + "00000".substring(0, 6 - c.length) + c;
+  };
+
+  // Hàm đăng xuất
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser (null);
+    navigate("/dangnhap");
+  };
 
   return (
     <nav className="navbar">
       {/* Logo */}
       <a href="/" className="navbar-logo">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="22"
-          height="22"
-          fill="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path d="M12 3l9 8h-3v9h-12v-9h-3l9-8z" />
-        </svg>
+        <img src="/logo-navbar.png" alt="SmartHome Logo" style={{ height: "28px", marginRight: "10px" }} />
         Smart Home
       </a>
 
       {/* Links */}
       <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
-        <a href="#">Trang chủ</a>
-        <a href="#">Cảm biến</a>
-        <a href="#">Lịch biểu</a>
-        <a href="#">Người dùng</a>
-        <a href="#">Cài đặt</a>
+        <Link to="/">Trang chủ</Link>
+        <Link to="/sensors">Cảm biến</Link>
+        <Link to="/schedules">Lịch biểu</Link>
+        <Link to="/users">Người dùng</Link>
+        <Link to="/settings">Cài đặt</Link>
       </div>
 
       {/* Profile + Menu Toggle */}
       <div className="navbar-profile">
-        <img
-          src="https://i.pravatar.cc/40"
-          alt="User"
-        />
+        {user ? (
+          <>
+            {/* Logo chữ cái đầu tên user */}
+            <div
+              className="user-logo"
+              style={{
+                backgroundColor: getRandomColor(user.email || "U"),
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                color: "white",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                fontWeight: "bold",
+                fontSize: "20px",
+                userSelect: "none",
+                cursor: "default",
+                marginRight: "10px",
+              }}
+              title={user.email}
+            >
+              {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+            </div>
+            <button className="logout-button" onClick={handleLogout}>
+              Đăng xuất
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/dangnhap" className="login-link">
+              Đăng nhập
+            </Link>
+            <Link to="/register" className="register-link" style={{ marginLeft: 10 }}>
+              Đăng ký
+            </Link>
+          </>
+        )}
+
         <button
           className="menu-toggle"
           onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
         >
           ☰
         </button>
       </div>
     </nav>
-  )
+  );
 }
 
-export default Navbar
+export default Navbar;  

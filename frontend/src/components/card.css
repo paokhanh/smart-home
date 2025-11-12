@@ -1,45 +1,147 @@
+/* ========================================= */
+/* KHAI BÁO BIẾN (Đồng bộ với dashboard.css nếu có thể) */
+/* ========================================= */
+:root {
+    --primary-color: #007bff;        /* Màu chủ đạo */
+    --text-dark: #111827;            /* Màu chữ tối */
+    --text-light: #ffffff;           /* Màu chữ sáng */
+    --bg-white: #ffffff;             /* Nền Card trắng */
+    --shadow-base: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.15);
+    --border-radius-card: 16px;      /* Độ bo tròn lớn hơn */
+    
+    /* Biến Glassmorphism (Sử dụng cho Dashboard) */
+    --card-bg-blur: rgba(255, 255, 255, 0.15); 
+    --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    --border-glass: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* ========================================= */
+/* 1. STYLES CỦA CARD CHÍNH */
+/* ========================================= */
 .card {
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-  padding: 20px;
-  box-sizing: border-box;
-  transition: box-shadow 0.3s ease;
-  cursor: default;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #111827;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    /* Mặc định: Nền trắng tinh tế */
+    background-color: var(--bg-white);
+    border-radius: var(--border-radius-card);
+    box-shadow: var(--shadow-base);
+    padding: 25px; /* Padding lớn hơn */
+    box-sizing: border-box;
+    transition: all 0.3s ease; /* Transition mượt mà hơn */
+    cursor: default;
+    font-family: 'Inter', sans-serif; /* Đồng bộ font */
+    color: var(--text-dark);
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Khoảng cách giữa các phần tử */
 }
 
 .card:hover {
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.15);
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-3px); /* Hiệu ứng nâng nhẹ khi hover */
 }
 
+/* ========================================= */
+/* 2. HEADER VÀ FOOTER */
+/* ========================================= */
 .card-header {
-  font-size: 1.25rem;
-  font-weight: 700;
-  user-select: none;
-  margin-bottom: 12px;
+    font-size: 1.4rem; /* Kích thước lớn hơn */
+    font-weight: 600; /* Độ đậm vừa phải */
+    color: var(--primary-color); /* Sử dụng màu chủ đạo */
+    border-bottom: 2px solid #f0f0f0; /* Đường phân cách nhẹ */
+    padding-bottom: 10px;
+    margin-bottom: 5px; /* Giảm margin dưới header */
 }
 
 .card-content {
-  font-size: 1rem;
-  line-height: 1.4;
-  flex: 1;
+    font-size: 1rem;
+    line-height: 1.5;
+    flex: 1;
+    /* Không cần đặt flex-direction/display ở đây vì đã có .content-flex */
 }
 
 .content-flex {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
-.card-footer {
-   padding: 8px 16px;
-  background: #f5f5f5;
-  border-top: 1px solid #eee;
-  font-size: 0.9em;
-  color: #888;
 
+.card-footer {
+    padding: 10px 0; /* Loại bỏ padding ngang, chỉ giữ padding dọc */
+    background: transparent; /* Loại bỏ nền xám */
+    border-top: 1px solid #e0e0e0; /* Đường phân cách tinh tế */
+    font-size: 0.9em;
+    color: var(--text-dark);
+    margin-top: 5px;
 }
+
+/* ========================================= */
+/* 3. STYLES ĐẶC BIỆT CHO GLASSMORPHISM (Nếu cần) */
+/* Áp dụng style GLASSMORPHISM cho .device-card */
+.device-card {
+    /* ĐÂY LÀ PHẦN QUAN TRỌNG NHẤT */
+    background-color: var(--card-bg-blur) !important; /* Ghi đè nền trắng */
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px); 
+    box-shadow: var(--shadow-glass);
+    border: var(--border-glass);
+    color: var(--text-light) !important; /* Chữ màu sáng */
+}
+
+.device-card:hover {
+    background-color: rgba(255, 255, 255, 0.3) !important; 
+    box-shadow: 0 16px 32px 0 rgba(31, 38, 135, 0.4);
+    transform: translateY(-5px); 
+}
+
+.device-card .card-header,
+.device-card .card-content p,
+.device-card .card-content {
+    color: var(--text-light) !important;
+}
+
+.device-card .card-header {
+    border-bottom-color: rgba(255, 255, 255, 0.3) !important;
+}
+/* ========================================= */
+
+/*
+   Lưu ý: Bạn nên sử dụng một class riêng (ví dụ: .glass-card)
+   khi áp dụng card này trong Dashboard để nó có hiệu ứng mờ.
+   (Bạn đang sử dụng className="device-card" trong Dashboard.jsx)
+*/
+
+.glass-card {
+    /* Áp dụng Glassmorphism */
+    background-color: var(--card-bg-blur); 
+    backdrop-filter: blur(10px); 
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-glass);
+    border: var(--border-glass);
+    color: var(--text-light); /* Chữ màu sáng */
+}
+
+.glass-card .card-header {
+    color: var(--text-light); /* Đảm bảo Header cũng sáng */
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3); /* Đường phân cách mờ */
+}
+
+.glass-card .card-footer {
+    color: var(--text-light);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.glass-card .card-content {
+    color: var(--text-light);
+}
+
+/* ========================================= */
+/* 4. SỬA LỖI FLEXBOX (Đảm bảo card hoạt động tốt với nội dung) */
+/* ========================================= */
+
+/* Nếu component Card được sử dụng trong Dashboard: */
+/* Trong Dashboard.jsx, thay vì dùng className="device-card" (styles từ dashboard.css) */
+/* hãy dùng className="card device-card" để kết hợp styles của card.css và dashboard.css */
+
+/* Ví dụ trong Dashboard.jsx: */
+/* <Card title="Đèn" className="card device-card">...</Card> */
+/* Hoặc đổi tên .device-card trong dashboard.css thành .glass-card */

@@ -43,11 +43,41 @@
   align-items: center;
 }
 
-.navbar-profile img {
-  width: 35px;
-  height: 35px;
+.user-logo {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 20px;
+  user-select: none;
+  cursor: default;
+  margin-right: 10px;
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  color: #333;
   cursor: pointer;
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+.login-link,
+.register-link {
+  color: #333;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-link:hover,
+.register-link:hover,
+.logout-button:hover {
+  text-decoration: underline;
 }
 
 .menu-toggle {
