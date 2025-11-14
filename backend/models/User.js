@@ -9,6 +9,14 @@ const userSchema = new mongoose.Schema({
     enum: ["Admin", "Owner", "User"], 
     default: "User" 
   },
+  houses: [
+    {
+      houseId: { type: mongoose.Schema.Types.ObjectId, ref: "House" },
+      role: { type: String, enum: ["Owner", "Member"], default: "Member" },
+      default: { type: Boolean, default: false }
+    }
+  ],
+  activeHouse: { type: mongoose.Schema.Types.ObjectId, ref: "House" },
   devices: [
     {
       deviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },

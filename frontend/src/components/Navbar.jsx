@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./navbar.css";
+import { getCurrentUser } from '../services/authService';
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -9,10 +10,26 @@ function Navbar() {
 
   // Lấy user từ localStorage khi component mount
   useEffect(() => {
-    const storedUser  = localStorage.getItem("user");
-    if (storedUser ) {
-      setUser (JSON.parse(storedUser ));
-    }
+    let mounted = true;
+    (async () => {
+      try {
+        const serverUser = await getCurrentUser();
+        if (mounted && serverUser) {
+          localStorage.setItem('user', JSON.stringify(serverUser));
+          setUser(serverUser);
+          return;
+        }
+      } catch (err) {
+        // ignore
+      }
+
+      const storedUser  = localStorage.getItem("user");
+      if (mounted && storedUser ) {
+        setUser (JSON.parse(storedUser ));
+      }
+    })();
+
+    return () => { mounted = false; };
   }, []);
 
   // Hàm tạo màu nền ngẫu nhiên cho logo chữ cái
@@ -44,6 +61,7 @@ function Navbar() {
       {/* Links */}
       <div className={`navbar-links ${menuOpen ? "open" : ""}`}>
         <Link to="/">Trang chủ</Link>
+        <Link to="/houses"> Nhà của tôi</Link>
         <Link to="/sensors">Cảm biến</Link>
         <Link to="/schedules">Lịch biểu</Link>
         <Link to="/users">Người dùng</Link>

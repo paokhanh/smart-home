@@ -14,11 +14,13 @@ const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const data = await login(email, password);
+      console.log("Login response:", data); // ✅ DEBUG
 
-      if (data.user) {
+      if (data.user && data.token) {
         // ✅ Lưu user và token vào localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("token", data.token);
+        console.log("Token saved:", localStorage.getItem("token")); // ✅ DEBUG
 
         // ✅ Redirect sau login
         const redirectPath = localStorage.getItem("redirectAfterLogin") || "/";
@@ -28,6 +30,7 @@ const handleLogin = async (e) => {
         alert(data.message || "Sai email hoặc mật khẩu");
       }
     } catch (error) {
+      console.error("Login error:", error); // ✅ DEBUG
       alert("Không thể kết nối đến server");
     }
   };  

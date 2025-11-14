@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { getCurrentUser } from './services/authService';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -7,6 +8,7 @@ import Sensors from './pages/Sensors';
 import Schedules from './pages/Schedules';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import Houses from './pages/Houses';
 import DangNhap from './pages/DangNhap';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
@@ -16,6 +18,30 @@ function App() {
   const location = useLocation();
   const authPages = ['/dangnhap', '/register'];
   const isAuthPage = authPages.includes(location.pathname);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    // Try to sync server user (cookie) into localStorage before rendering routes
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        if (mounted && user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      } catch (err) {
+        // ignore
+      } finally {
+        if (mounted) setLoadingUser(false);
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, []);
+
+  if (loadingUser) {
+    return <div className="loading-container">Đang kiểm tra đăng nhập...</div>;
+  }
 
   return (
     <div className="app-wrapper ${isAuthPage ? 'auth-page' : 'main-page'}">
@@ -67,6 +93,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/houses"
+              element={
+                <ProtectedRoute role={["Owner", "Admin"]}>
+                  <Houses />
                 </ProtectedRoute>
               }
             />
