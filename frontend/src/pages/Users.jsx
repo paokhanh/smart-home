@@ -200,11 +200,12 @@ const handleCancelDelete = () => {
 
     // Nếu Owner đang xem Admin → không cho sửa/xóa
     if (currentUser.role === "Owner" && user.role === "Admin") {
-      return (
-        <div className="actions">
-          <span className="no-action">Không thể sửa/xóa Admin</span>
-        </div>
-      );
+      // return (
+      //   <div className="actions">
+      //     <span className="no-action">Không thể sửa/xóa Admin</span>
+      //   </div>
+      // );
+      return null;
     }
 
     // Nếu Owner đang xem Owner khác → không cho xóa
@@ -295,7 +296,14 @@ const handleCancelDelete = () => {
           </div>
 
           <div className="table-container">
-            <Table columns={columns} data={users} />
+              <Table 
+                columns={columns} 
+                data={
+                  currentUser.role === "Owner"
+                    ? users.filter(u => u.role !== "Admin")  // Owner không được xem Admin
+                    : users
+                } 
+              />
           </div>
 
           {/* Modal Thêm */}

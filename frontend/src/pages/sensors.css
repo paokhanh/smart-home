@@ -1,0 +1,150 @@
+.page {
+  padding: 20px;
+  font-family: "Segoe UI", sans-serif;
+}
+
+.page h2 {
+  margin-bottom: 20px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+}
+
+.button {
+  background-color: #4cafef;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s;
+  margin-bottom: 15px;
+}
+
+.button:hover {
+  background-color: #2196f3;
+}
+
+/* TABLE STYLE */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.table thead {
+  background-color: #4cafef;
+  color: white;
+  text-align: left;
+  font-size: 16px;
+}
+
+.table th, .table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+.table tbody tr:hover {
+  background-color: #f3faff;
+  cursor: pointer;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Làm rộng riêng ô chọn loại cảm biến */
+.sensor-type-group select {
+  width: 100%;
+  min-width: 400px;     /* rộng hơn các input khác */
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e0;
+  font-size: 15px;
+}
+
+.sensor-type-group select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+/* MODAL STYLES */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  padding: 25px 35px !important;
+  border-radius: 16px !important;
+  border: none !important;
+  background: white;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
+}
+
+.modal-title {
+  font-size: 22px;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.modal-body label {
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.modal-body input,
+.modal-body select {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e0;
+  font-size: 15px;
+  transition: 0.2s;
+}
+
+.modal-body input:focus,
+.modal-body select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+}
+
+/* Nút hành động */
+.btn-save {
+  background: #6366f1 !important;
+  color: white !important;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: 0.25s;
+}
+
+.btn-save:hover {
+  background: #4f46e5 !important;
+  transform: translateY(-2px);
+}
+
+.btn-cancel {
+  background: #e2e8f0 !important;
+  color: #4a5568 !important;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: 0.25s;
+}
+
+.btn-cancel:hover {
+  background: #cfd8e3 !important;
+}
+.sensor-temp { background-color: #ff9800; }   /* Temperature */
+.sensor-gas { background-color: #e53935; }    /* MQ2 Gas */
+.sensor-motion { background-color: #4caf50; } /* PIR */
+.sensor-light { background-color: #9c27b0; }  /* LDR */
+.sensor-humidity { background-color: #03a9f4; }

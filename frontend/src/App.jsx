@@ -11,9 +11,9 @@ import Settings from './pages/Settings';
 import Houses from './pages/Houses';
 import DangNhap from './pages/DangNhap';
 import ProtectedRoute from './components/ProtectedRoute';
+import Device from './pages/Device';
 import './index.css';
 import DangKy from './pages/DangKy';
-
 function App() {
   const location = useLocation();
   const authPages = ['/dangnhap', '/register'];
@@ -73,6 +73,14 @@ function App() {
               }
             />
             <Route
+              path="/device"
+              element={
+                <ProtectedRoute>
+                  <Device />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/schedules"
               element={
                 <ProtectedRoute>
@@ -104,7 +112,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
             {/* Nếu route không tồn tại → redirect */}
             <Route
               path="*"

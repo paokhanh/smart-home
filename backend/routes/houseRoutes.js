@@ -3,6 +3,7 @@ const router = express.Router();
 const House = require("../models/House");
 const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
+const mqttService = require('../services/mqttService');
 const mongoose = require("mongoose");
 
 // Tạo house mới (người dùng đã đăng nhập thành owner)
@@ -15,9 +16,12 @@ router.post("/", authMiddleware, async (req, res) => {
     console.log("📝 House data:", { name, address });
 
     // Tạo house mới
+    const mqttCode = "house_" + Date.now();
+
     const house = new House({
       name,
       address,
+      mqttCode,
       owners: [req.user._id],
       members: [{ userId: req.user._id, role: "Owner" }]
     });
@@ -26,14 +30,24 @@ router.post("/", authMiddleware, async (req, res) => {
     await house.save();
     console.log("✅ House created and saved:", house._id);
     console.log("📦 Saved house:", JSON.stringify(house, null, 2));
-    
+
     // Cập nhật user: thêm house vào danh sách houses
     const updateResult = await User.findByIdAndUpdate(req.user._id, {
       $push: { houses: { houseId: house._id, role: "Owner", default: true } },
       activeHouse: house._id
     });
     console.log("👤 User updated:", updateResult ? "Success" : "Failed");
+        // 📡 Gửi mqttCode xuống ESP32 sau khi house được tạo
+    try {
+      const topic = `device/esp32_device_1/config`;
+      const payload = JSON.stringify({ mqttCode: house.mqttCode });
 
+      mqttService.publish(topic, payload);
+      console.log("📤 Sent config to ESP32:", payload);
+
+    } catch (err) {
+      console.error("❌ Failed to send MQTT config to ESP32:", err);
+    }
     res.json(house);
   } catch (err) {
     console.error("❌ Error creating house:", err);

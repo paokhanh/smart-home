@@ -63,6 +63,7 @@ function Navbar() {
         <Link to="/">Trang chủ</Link>
         <Link to="/houses"> Nhà của tôi</Link>
         <Link to="/sensors">Cảm biến</Link>
+        <Link to="/device">Thiết bị</Link>
         <Link to="/schedules">Lịch biểu</Link>
         <Link to="/users">Người dùng</Link>
         <Link to="/settings">Cài đặt</Link>

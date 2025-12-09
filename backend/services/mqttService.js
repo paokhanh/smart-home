@@ -71,22 +71,38 @@ function initMQTT() {
     
     mqttClient.on('message', async (topic, payload) => {
       try {
-        console.log(`📨 Message from ${topic}:`);
-        const message = JSON.parse(payload.toString());
-        console.log(message);
+          const parts = topic.split('/');
+          const mqttCode = parts[1];     // ex: house_1764734118862
+          const deviceId = parts[3];     // esp32_device_1
+          let message;
+          const text = payload.toString();
+          try {
+            message = JSON.parse(text);
+          } catch {
+            message = text; // plain text message
+          }
+
         
-        // Handle different message types
-        if (topic.includes('/telemetry')) {
-          await handleTelemetry(topic, message);
-        } else if (topic.includes('/power_stats')) {
-          await handlePowerStats(topic, message);
-        } else if (topic.includes('/status')) {
-          await handleStatus(topic, message);
+          if (topic.includes('/power_stats')) {
+            await handlePowerStats(mqttCode, deviceId, message);
+            return;
+          }
+
+          if (topic.includes('/telemetry')) {
+            await handleTelemetry(topic, message);
+            return;
+          }
+          
+          
+          if (topic.includes('/status')) {
+            await handleStatus(topic, message);
+            return;
+          }
+
+        } catch (err) {
+          console.error("❌ MQTT message error:", err);
         }
-      } catch (error) {
-        console.error('❌ Error processing message:', error);
-      }
-    });
+      });
     
     mqttClient.on('reconnect', () => {
       console.log('🔄 MQTT Reconnecting...');
@@ -103,36 +119,36 @@ function initMQTT() {
 }
 
 // Handle Telemetry Data (Sensor readings + Device states)
-async function handleTelemetry(topic, message) {
+async function handleTelemetry(topic, payload) {
   try {
     // Extract houseId and deviceId from topic
     // Topic format: house/house_001/device/esp32_device_1/telemetry
     const parts = topic.split('/');
     const houseId = parts[1]; // house_001 or DB ID
     const deviceId = parts[3]; // esp32_device_1
-    
-    console.log(`📊 Telemetry - House: ${houseId}, Device: ${deviceId}`);
-    console.log('   Sensors:', message.sensors);
-    console.log('   Devices:', message.devices);
-    console.log('   Power:', message.power);
+    const msg = JSON.parse(payload);
+    console.log(`📊 Telemetry - House: ${mqttCode}, Device: ${deviceId}`);
+    console.log('   Sensors:', msg.sensors);
+    console.log('   Devices:', msg.devices);
+    console.log('   Power:', msg.power);
     
     // Cache latest telemetry in-memory by both house+device and device-only
     telemetryCache[houseId] = telemetryCache[houseId] || {};
     telemetryCache[houseId][deviceId] = {
-      sensors: message.sensors || null,
-      devices: message.devices || null,
-      power: message.power || null,
+      sensors: msg.sensors || null,
+      devices: msg.devices || null,
+      power: msg.power || null,
       timestamp: new Date()
     };
     
     // Also cache by device ID only (for cross-house lookup / mismatch tolerance)
-    telemetryByDevice[deviceId] = {
-      sensors: message.sensors || null,
-      devices: message.devices || null,
-      power: message.power || null,
+    telemetryCache[mqttCode] = telemetryCache[mqttCode] || {};
+    telemetryCache[mqttCode][deviceId] = {
+      sensors: msg.sensors,
+      devices: msg.devices,
+      power: msg.power,
       timestamp: new Date(),
-      lastMQTTHouseId: houseId  // remember which house published this
-    };
+    }
     
     // In a real app, optionally store this in MongoDB for historical data
     // await TelemetryLog.create({ houseId, deviceId, data: message, timestamp: new Date() });
@@ -142,52 +158,99 @@ async function handleTelemetry(topic, message) {
   }
 }
 
-// Handle Power Statistics
-async function handlePowerStats(topic, message) {
-  try {
-    // Extract houseId and deviceId from topic
-    const parts = topic.split('/');
-    const houseId = parts[1];
-    const deviceId = parts[3];
-    
-    console.log(`⚡ Power Stats - House: ${houseId}, Device: ${deviceId}`);
-    console.log(`   Light: ${message.light_wh}Wh, Fan: ${message.fan_wh}Wh, Camera: ${message.camera_wh}Wh, Total: ${message.total_wh}Wh`);
-    
-    // Save to MongoDB
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    let record = await PowerConsumption.findOne({
-      houseId,
-      deviceId,
+let activeHouseId = null;
+
+// function switchHouse(newHouseId) {
+//     activeHouseId = newHouseId;
+//     console.log("🔄 MQTT switched to house:", newHouseId);
+// }
+
+// cache lưu giá trị Wh cuối cùng của từng device
+const lastPowerCache = {}; 
+// cấu trúc: lastPowerCache[houseId][deviceId] = { light, fan, camera, total }
+
+async function handlePowerStats(mqttCode, deviceId, msg) {
+  const house = await House.findOne({ mqttCode });
+  if (!house) {
+    console.log(`❌ House not found for ${mqttCode}`);
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  // Tạo cache cho nhà
+  if (!lastPowerCache[house._id]) lastPowerCache[house._id] = {};
+
+  // Tạo cache cho ESP32
+  if (!lastPowerCache[house._id][deviceId]) {
+      lastPowerCache[house._id][deviceId] = {
+        light: 0,
+        fan: 0,
+        ac: 0,
+        camera: 0,
+        total: 0
+      };
+  }
+
+  const prev = lastPowerCache[house._id][deviceId];
+
+  const computeDelta = (prevVal, newVal) => {
+    if (newVal < prevVal) {
+      // Firmware RESET → newVal là giá trị mới từ đầu
+      return newVal;
+    }
+    return newVal - prevVal; // bình thường
+  };
+
+  const dLight  = computeDelta(prev.light, msg.light_wh || 0);
+  const dFan    = computeDelta(prev.fan, msg.fan_wh || 0);
+  const dAC     = computeDelta(prev.ac, msg.ac_wh || 0);
+  const dCam    = computeDelta(prev.camera, msg.camera_wh || 0);
+  const dTotal  = computeDelta(prev.total, msg.total_wh || 0);
+
+  // Lưu giá trị hiện tại vào cache cho lần tiếp theo
+  prev.light  = msg.light_wh || 0;
+  prev.fan    = msg.fan_wh || 0;
+  prev.ac     = msg.ac_wh || 0;
+  prev.camera = msg.camera_wh || 0;
+  prev.total  = msg.total_wh || 0;
+
+  // Hàm update vào MongoDB
+  const addWh = async (dev, wh) => {
+    if (!wh || wh < 0.00001) return;
+
+    let rec = await PowerConsumption.findOne({
+      houseId: house._id,
+      deviceId: dev,
       date: today
     });
-    
-    if (record) {
-      record.lightWh = message.light_wh || 0;
-      record.fanWh = message.fan_wh || 0;
-      record.cameraWh = message.camera_wh || 0;
-      record.totalWh = message.total_wh || 0;
-      record.timestamp = new Date();
-      await record.save();
-      console.log('✓ Power stats updated');
-    } else {
-      await PowerConsumption.create({
-        houseId,
-        deviceId,
-        lightWh: message.light_wh || 0,
-        fanWh: message.fan_wh || 0,
-        cameraWh: message.camera_wh || 0,
-        totalWh: message.total_wh || 0,
-        date: today
+
+    if (!rec) {
+      rec = new PowerConsumption({
+        houseId: house._id,
+        deviceId: dev,
+        date: today,
+        totalWh: 0
       });
-      console.log('✓ Power stats created');
     }
-    
-  } catch (error) {
-    console.error('Error handling power stats:', error);
-  }
+
+    rec.totalWh += wh;
+    rec.timestamp = new Date();
+    await rec.save();
+  };
+
+  // Map incoming metrics to schema device IDs (vn keys)
+  await addWh("den", dLight);
+  await addWh("quat", dFan);
+  await addWh("dieuHoa", dAC);
+  await addWh("camera", dCam);
+
+  // total is reflected by summing device records; keep a log
+  console.log(`⚡ Updated: den +${dLight.toFixed(4)}, quat +${dFan.toFixed(4)}, dieuHoa +${dAC.toFixed(4)}, cam +${dCam.toFixed(4)}, total +${dTotal.toFixed(4)}`);
 }
+
+
 
 // Handle Device Status
 async function handleStatus(topic, message) {
@@ -235,26 +298,27 @@ function getMQTTClient() {
 // Return latest telemetry for a house (or empty object)
 // Attempts to find by DB house ID first, then falls back to device-only cache
 function getLatestTelemetry(houseId) {
-  if (!houseId) return {};
-  
-  // Try primary cache first (matches DB house ID)
-  if (telemetryCache[houseId]) {
-    return telemetryCache[houseId];
+  return telemetryCache[houseId] || {};
+}
+
+// Publish to any MQTT topic (for device model-based control)
+function publish(topic, payload) {
+  if (!mqttClient || !mqttClient.connected) {
+    console.error('❌ MQTT client not connected');
+    return false;
   }
   
-  // Fallback: if house not in cache, try looking by device only
-  // This handles cases where firmware publishes with different house ID (e.g., 'house_001')
-  // In that case, return the device cache which has the latest data
-  if (Object.keys(telemetryByDevice).length > 0) {
-    // Return the latest device-only cache (assumes single device per house for now)
-    const latestDevice = telemetryByDevice['esp32_device_1']; // hardcoded device ID
-    if (latestDevice) {
-      console.log(`⚠️ Using device-level telemetry cache for house ${houseId} (house ID mismatch, MQTT was ${latestDevice.lastMQTTHouseId})`);
-      return { 'esp32_device_1': latestDevice };
+  const payloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  
+  mqttClient.publish(topic, payloadStr, (err) => {
+    if (err) {
+      console.error('❌ Publish error:', err);
+    } else {
+      console.log(`📤 Published to ${topic}:`, payloadStr);
     }
-  }
+  });
   
-  return {};
+  return true;
 }
 
 // Disconnect
@@ -268,7 +332,8 @@ function disconnect() {
 module.exports = {
   initMQTT,
   publishCommand,
+  publish,
   getMQTTClient,
   getLatestTelemetry,
   disconnect
-};
+};  

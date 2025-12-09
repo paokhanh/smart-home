@@ -16,19 +16,24 @@ const handleLogin = async (e) => {
       const data = await login(email, password);
       console.log("Login response:", data); // ✅ DEBUG
 
-      if (data.user && data.token) {
-        // ✅ Lưu user và token vào localStorage
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("token", data.token);
-        console.log("Token saved:", localStorage.getItem("token")); // ✅ DEBUG
+        if (data.user && data.token) {
+          // Gộp user + token vào cùng object
+          const userData = {
+            ...data.user._id,
+            token: data.token
+          };
 
-        // ✅ Redirect sau login
-        const redirectPath = localStorage.getItem("redirectAfterLogin") || "/";
-        localStorage.removeItem("redirectAfterLogin");
-        navigate(redirectPath);
-      } else {
-        alert(data.message || "Sai email hoặc mật khẩu");
-      }
+          localStorage.setItem("user", JSON.stringify(userData));
+
+          console.log("Saved user:", JSON.parse(localStorage.getItem("user")));
+
+          // Redirect
+          const redirectPath = localStorage.getItem("redirectAfterLogin") || "/";
+          localStorage.removeItem("redirectAfterLogin");
+          navigate(redirectPath);
+        } else {
+          alert(data.message || "Sai email hoặc mật khẩu");
+        }
     } catch (error) {
       console.error("Login error:", error); // ✅ DEBUG
       alert("Không thể kết nối đến server");

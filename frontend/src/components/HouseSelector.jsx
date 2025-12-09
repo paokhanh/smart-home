@@ -7,6 +7,17 @@ function HouseSelector({ onHouseChange, currentHouseId }) {
   const [selectedHouse, setSelectedHouse] = useState(currentHouseId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+// useEffect(() => {
+//     if (currentHouseId) {
+//       console.log("🔄 MQTT house switched →", currentHouseId);
+
+//       fetch("http://localhost:5000/api/mqtt/setHouse", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ houseId: currentHouseId })
+//       });
+//     }
+//   }, [currentHouseId]);
 
   useEffect(() => {
     fetchHouses();

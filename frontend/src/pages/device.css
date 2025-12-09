@@ -1,0 +1,116 @@
+/* ==== GRID ==== */
+.devices-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 5px;
+}
+
+/* ==== DEVICE CARD ==== */
+.device-card {
+  width: 260px;
+  background: #ffffff;
+  padding: 18px;
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  transition: 0.25s ease;
+  border: 1px solid #eee;
+}
+
+.device-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.1);
+}
+
+/* Card bật */
+.device-card.on {
+  background: linear-gradient(to bottom right, #e8fff1, #ffffff);
+  border-color: #c6f3d3;
+}
+
+/* Title */
+.device-card h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* ==== Toggle switch ==== */
+.toggle-wrapper {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 54px;
+  height: 28px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background-color: #ccc;
+  border-radius: 28px;
+  cursor: pointer;
+  transition: .3s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: .3s;
+}
+
+/* bật */
+input:checked + .slider {
+  background-color: #27ae60;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* STATUS ICON */
+.status-online {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.status-offline {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+
+/* FIX: đảm bảo text trong card luôn đậm, không bị mờ */
+.device-card {
+    color: #222 !important;
+    opacity: 1 !important;
+}
+
+.device-card h3,
+.device-card p,
+.device-card span {
+    color: #222 !important;
+    opacity: 1 !important;
+}
+
+/* Đảm bảo card không tự giảm opacity */
+.device-card * {
+    opacity: 1 !important;
+}

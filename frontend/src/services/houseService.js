@@ -1,32 +1,32 @@
-import axios from 'axios';
+//import axios from 'axios';
+import {api as apiClient } from './api';
+// const API_BASE_URL = 'http://localhost:5000/api/houses';
 
-const API_BASE_URL = 'http://localhost:5000/api/houses';
+// const getToken = () => localStorage.getItem('token');
 
-const getToken = () => localStorage.getItem('token');
+// const apiClient = axios.create({
+//   baseURL: API_BASE_URL,
+//   headers: {
+//     'Content-Type': 'application/json',
+//   },
+// });
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Interceptor để thêm token vào mỗi request
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// // Interceptor để thêm token vào mỗi request
+// apiClient.interceptors.request.use(
+//   (config) => {
+//     const token = getToken();
+//     if (token) {
+//       config.headers.Authorization = `Bearer ${token}`;
+//     }
+//     return config;
+//   },
+//   (error) => Promise.reject(error)
+// );
 
 // Lấy danh sách tất cả nhà của user
 export const getAllHouses = async () => {
   try {
-    const response = await apiClient.get('/');
+    const response = await apiClient.get('/houses');
     return response.data;
   } catch (error) {
     console.error('Error fetching houses:', error);
@@ -37,7 +37,7 @@ export const getAllHouses = async () => {
 // Tạo nhà mới
 export const createHouse = async (houseData) => {
   try {
-    const response = await apiClient.post('/', houseData);
+    const response = await apiClient.post('/houses', houseData);
     return response.data;
   } catch (error) {
     console.error('Error creating house:', error);
@@ -48,7 +48,7 @@ export const createHouse = async (houseData) => {
 // Lấy chi tiết một nhà
 export const getHouseById = async (houseId) => {
   try {
-    const response = await apiClient.get(`/${houseId}`);
+    const response = await apiClient.get(`/houses/${houseId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching house details:', error);
@@ -59,7 +59,7 @@ export const getHouseById = async (houseId) => {
 // Cập nhật thông tin nhà
 export const updateHouse = async (houseId, houseData) => {
   try {
-    const response = await apiClient.put(`/${houseId}`, houseData);
+    const response = await apiClient.put(`/houses/${houseId}`, houseData);
     return response.data;
   } catch (error) {
     console.error('Error updating house:', error);
@@ -70,7 +70,7 @@ export const updateHouse = async (houseId, houseData) => {
 // Xóa nhà
 export const deleteHouse = async (houseId) => {
   try {
-    const response = await apiClient.delete(`/${houseId}`);
+    const response = await apiClient.delete(`/houses/${houseId}`);
     return response.data;
   } catch (error) {
     console.error('Error deleting house:', error);
@@ -81,7 +81,7 @@ export const deleteHouse = async (houseId) => {
 // Mời user vào nhà
 export const inviteUserToHouse = async (houseId, inviteData) => {
   try {
-    const response = await apiClient.post(`/${houseId}/invite`, inviteData);
+    const response = await apiClient.post(`/houses/${houseId}/invite`, inviteData);
     return response.data;
   } catch (error) {
     console.error('Error inviting user:', error);
@@ -92,7 +92,7 @@ export const inviteUserToHouse = async (houseId, inviteData) => {
 // Cập nhật quyền thiết bị của thành viên
 export const updateMemberPermissions = async (houseId, memberId, permissionsData) => {
   try {
-    const response = await apiClient.put(`/${houseId}/members/${memberId}/permissions`, permissionsData);
+    const response = await apiClient.put(`/houses/${houseId}/members/${memberId}/permissions`, permissionsData);
     return response.data;
   } catch (error) {
     console.error('Error updating member permissions:', error);
