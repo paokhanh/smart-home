@@ -11,6 +11,7 @@ const DeviceSchema = new mongoose.Schema({
   status: { type: String, default: 'offline' }, // online/offline
   telemetry: { type: Object, default: {} },
   mqttTopicSet: { type: String }, // e.g. devices/SOCK_998877/set
+  pin: { type: Number }, // Optional pin number on ESP32 for direct control
 }, { timestamps: true });
 
 module.exports = mongoose.model('Device', DeviceSchema);

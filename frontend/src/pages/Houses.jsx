@@ -149,20 +149,20 @@ const Houses = () => {
             houses.map(house => (
               <Card key={house._id} className="house-card" title={house.name}>
                 <div className="house-info">
-                  <p><strong>📍 Địa chỉ:</strong> {house.address || 'Chưa cập nhật'}</p>
-                  <p><strong>👥 Thành viên:</strong> {house.members?.length || 0}</p>
-                  <p><strong>📅 Tạo lúc:</strong> {new Date(house.createdAt).toLocaleDateString('vi-VN')}</p>
+                  <p><strong> Địa chỉ:</strong> {house.address || 'Chưa cập nhật'}</p>
+                  <p><strong> Thành viên:</strong> {house.members?.length || 0}</p>
+                  <p><strong> Tạo lúc:</strong> {new Date(house.createdAt).toLocaleDateString('vi-VN')}</p>
                 </div>
 
                 <div className="house-actions">
                   <button className="btn-edit" onClick={() => handleEdit(house)}>
-                    ✏️ Sửa
+                    Sửa
                   </button>
                   <button className="btn-members" onClick={() => setSelectedHouseForMembers(house)}>
-                    👥 Thành viên
+                    Thành viên
                   </button>
                   <button className="btn-delete" onClick={() => handleDelete(house._id)}>
-                    🗑️ Xóa
+                    Xóa
                   </button>
                 </div>
               </Card>

@@ -24,7 +24,7 @@ router.get('/:houseId/status', authMiddleware, async (req, res) => {
     const telemetry = getLatestTelemetry(houseId);
     const espTele = telemetry['esp32_device_1'] || {};
     
-    // Map ESP32 device states to frontend format
+    // Map ESP32 device states to frontend format (keep legacy named devices)
     const devices = {
       den: { 
         state: espTele.devices?.light ? 'on' : 'off', 
@@ -43,6 +43,26 @@ router.get('/:houseId/status', authMiddleware, async (req, res) => {
       }
     };
     
+    // Also collect any custom devices published by the firmware (keyed by hardwareId)
+    const customDevices = [];
+    const reserved = new Set(['light','fan','ac','camera','light_brightness','fan_speed','ac_temp']);
+
+    // Check devices block first for any non-reserved keys (legacy)
+    if (espTele.devices) {
+      for (const k of Object.keys(espTele.devices)) {
+        if (!reserved.has(k)) {
+          customDevices.push({ id: k, state: espTele.devices[k] ? 'on' : 'off' });
+        }
+      }
+    }
+
+    // Newer firmware publishes a `custom` object; add those too
+    if (espTele.custom) {
+      for (const k of Object.keys(espTele.custom)) {
+        customDevices.push({ id: k, state: espTele.custom[k] ? 'on' : 'off' });
+      }
+    }
+
     // Sensor data from ESP32
     const sensors = {
       temperature: espTele.sensors?.temperature ?? null,
@@ -56,6 +76,7 @@ router.get('/:houseId/status', authMiddleware, async (req, res) => {
       status: 'ok', 
       mqtt_connected: !!getMQTTClient()?.connected, 
       devices, 
+      customDevices,
       sensors, 
       raw: espTele 
     });
@@ -85,19 +106,33 @@ router.post('/:houseId/:deviceId/toggle', authMiddleware, async (req, res) => {
       'camera': 'camera'
     };
     
-    const mqttDeviceName = deviceMap[deviceId];
+    let mqttDeviceName = deviceMap[deviceId];
+
+    // If not a fixed device key, try to find a DB device by id and use its hardwareId
+    if (!mqttDeviceName) {
+      try {
+        const Device = require('../models/Device');
+        const dbDevice = await Device.findById(deviceId);
+        if (dbDevice) {
+          mqttDeviceName = dbDevice.hardwareId; // e.g. SOCK_998877
+        }
+      } catch (dbErr) {
+        console.error('DB lookup error in toggle route:', dbErr);
+      }
+    }
+
     if (!mqttDeviceName) {
       return res.status(400).json({ error: 'Invalid device ID' });
     }
-    
+
     // Publish toggle command to MQTT
     const command = { device: mqttDeviceName, action: 'toggle' };
     const ok = publishCommand(houseId, 'esp32_device_1', command);
-    
+
     if (!ok) {
       return res.status(503).json({ error: 'MQTT broker not connected' });
     }
-    
+
     res.json({ success: true, message: `Toggled ${deviceId}`, command });
   } catch (error) {
     console.error('Error toggling device:', error);

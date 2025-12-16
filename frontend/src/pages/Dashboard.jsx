@@ -4,11 +4,11 @@
   import ProtectedRoute from '../components/ProtectedRoute';
   import { getCurrentUser } from '../services/authService';
   import { getHouseById } from '../services/houseService';
-  import { toggleDevice as apiToggleDevice, setDeviceValue as apiSetDeviceValue, getDeviceStatus } from '../services/deviceService';
+  import { getDevicesByHouse, toggleDevice as apiToggleDevice, setDeviceValue as apiSetDeviceValue, getDeviceStatus } from '../services/deviceService';
   import { getSensorsByHouse } from '../services/sensorService';
   import { getPowerStats } from "../services/powerService";
   import './dashboard.css';                 
-
+// import { getDevicesByHouse } from '../../../backend/controllers/deviceController';
   const Dashboard = () => {
     const [currentHouse, setCurrentHouse] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
@@ -21,11 +21,18 @@
     const [sensors, setSensors] = useState([]);
     // Giá trị real-time của cảm biến từ MQTT
     const [sensorValues, setSensorValues] = useState({});
-    const [devices, setDevices] = useState({
+    // const [devices, setDevices] = useState({
+    //   den: { isOn: false },
+    //   quat: { isOn: false, speed: 0 },
+    //   dieuHoa: { isOn: false, temp: 24 },
+    //   camera: { isOn: false },
+    // });
+    // Fixed virtual devices (legacy dashboard controls)
+    const [fixedDevices, setFixedDevices] = useState({
       den: { isOn: false },
       quat: { isOn: false, speed: 0 },
       dieuHoa: { isOn: false, temp: 24 },
-      camera: { isOn: false },
+      camera: { isOn: false }
     });
 
     const deviceMap = {
@@ -34,7 +41,18 @@
       dieuHoa: { name: 'Điều hòa', icon: 'fa-snowflake' },
       camera: { name: 'Camera', icon: 'fa-video' },
     };
+
+    // Custom devices persisted in DB (created from Device page)
+    const [customDevices, setCustomDevices] = useState([]);
     const [powerStats, setPowerStats] = useState([]);
+
+    // Load custom devices for the selected house
+    useEffect(() => {
+      if (!currentHouse) return;
+      getDevicesByHouse(currentHouse._id)
+        .then(devs => setCustomDevices(devs))
+        .catch(console.error);
+    }, [currentHouse]);
 //Load thống kê điện năng tiêu thụ
     useEffect(() => {
       if (!currentHouse?._id) return;
@@ -104,6 +122,42 @@
       }
     };
 
+    // Helpers for custom devices
+    const toggleCustomDevice = async (device) => {
+      if (!canControlDevice(device._id)) {
+        setError('Bạn không có quyền điều khiển thiết bị này');
+        return;
+      }
+
+      // optimistic
+      setCustomDevices(prev => prev.map(d => d._id === device._id ? { ...d, status: d.status === 'online' ? 'offline' : 'online' } : d));
+      try {
+        setLoading(prev => ({ ...prev, [device._id]: true }));
+        await apiToggleDevice(currentHouse._id, device._id);
+      } catch (err) {
+        console.error('Error toggling custom device:', err);
+        setError('Lỗi: ' + (err.response?.data?.error || err.message));
+        // revert
+        setCustomDevices(prev => prev.map(d => d._id === device._id ? { ...d, status: device.status } : d));
+      } finally {
+        setLoading(prev => ({ ...prev, [device._id]: false }));
+      }
+    };
+
+    const updateCustomDeviceValue = async (device, key, value) => {
+      try {
+        setLoading(prev => ({ ...prev, [device._id]: true }));
+        setError(null);
+        await apiSetDeviceValue(currentHouse._id, device._id, value);
+        setCustomDevices(prev => prev.map(d => d._id === device._id ? { ...d, value: { ...(d.value||{}), [key]: value } } : d));
+      } catch (err) {
+        console.error('Error updating custom device:', err);
+        setError('Lỗi: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setLoading(prev => ({ ...prev, [device._id]: false }));
+      }
+    };
+
     // Check if user can control a device
     const canControlDevice = (deviceId) => {
       if (!userHousePermissions) return false;
@@ -121,12 +175,14 @@
       return false;
     };
 
-    // Get list of devices user can control
+    // Get list of devices user can control (fixed + custom)
     const getAccessibleDevices = () => {
-      return Object.keys(devices).filter(deviceId => canControlDevice(deviceId));
+      const fixed = Object.keys(fixedDevices || {}).filter(k => canControlDevice(k));
+      const custom = (customDevices || []).filter(d => canControlDevice(String(d._id))).map(d => d._id);
+      return [...fixed, ...custom];
     };
 
-    // Toggle device via API
+    // Toggle fixed device via API
     const toggleDevice = async (deviceKey) => {
       if (!canControlDevice(deviceKey)) {
         setError('Bạn không có quyền điều khiển thiết bị này');
@@ -140,7 +196,7 @@
         await apiToggleDevice(currentHouse._id, deviceKey);
         
         // Update local state optimistically
-        setDevices((prev) => ({
+        setFixedDevices((prev) => ({
           ...prev,
           [deviceKey]: { ...prev[deviceKey], isOn: !prev[deviceKey].isOn },
         }));
@@ -153,7 +209,7 @@
       }
     };
 
-    // Update device value via API
+    // Update fixed device value via API
     const updateValue = async (deviceKey, key, value) => {
       if (!canControlDevice(deviceKey)) {
         setError('Bạn không có quyền điều khiển thiết bị này');
@@ -166,8 +222,8 @@
         
         await apiSetDeviceValue(currentHouse._id, deviceKey, value);
         
-        // // Update local state optimistically
-        setDevices((prev) => ({
+        // Update local state optimistically
+        setFixedDevices((prev) => ({
           ...prev,
           [deviceKey]: { ...prev[deviceKey], [key]: value },
         }));
@@ -186,8 +242,8 @@
       try {
           const telemetry = await getDeviceStatus(currentHouse._id);
           
-          // 1. Cập nhật Trạng thái Thiết bị (Devices)
-          setDevices(prev => {
+          // 1. Cập nhật Trạng thái Thiết bị (fixed devices)
+          setFixedDevices(prev => {
               const newState = { ...prev };
 
                   // Đèn
@@ -234,6 +290,15 @@
 
                   return newState;
           });
+
+          // 1b. Cập nhật trạng thái custom devices (firmware sẽ publish them keyed by hardwareId)
+          if (Array.isArray(telemetry.customDevices) && telemetry.customDevices.length) {
+            setCustomDevices(prev => prev.map(d => {
+              const found = telemetry.customDevices.find(c => c.id === d.hardwareId);
+              if (found) return { ...d, status: found.state === 'on' ? 'online' : 'offline' };
+              return d;
+            }));
+          }
 
           // 2. Cập nhật Dữ liệu Cảm biến (Sensors) từ MQTT
           const newTemp = telemetry.sensors?.temperature;
@@ -363,98 +428,19 @@
           )}
 
           <div className="devices-grid">
-            {/* Đèn */}
-            {accessibleDevices.includes('den') && (
-              <Card title={deviceMap.den.name} className="device-card">
-                <div className="device-content">
-                  <i className={`fas ${deviceMap.den.icon} ${devices.den.isOn ? 'on' : 'off'}`}></i>
-                  <p>Trạng thái: {devices.den.isOn ? 'Bật' : 'Tắt'}</p>
-                  <button
-                    className={`btn-toggle ${devices.den.isOn ? 'on' : 'off'}`}
-                    onClick={() => toggleDevice('den')}
-                    disabled={loading.den}
-                  >
-                    {loading.den ? '⏳...' : (devices.den.isOn ? 'Tắt' : 'Bật')}
-                  </button>
-                </div>
-              </Card>
-            )}
+              {customDevices.map(device => (
+                <Card key={device._id} title={device.name} className="device-card">
+                  <p>Loại: {device.type}</p>
+                  <p>Trạng thái: {device.status}</p>
 
-            {/* Quạt */}
-            {accessibleDevices.includes('quat') && (
-              <Card title={deviceMap.quat.name} className="device-card">
-                <div className="device-content">
-                  <i className={`fas ${deviceMap.quat.icon} ${devices.quat.isOn ? 'on' : 'off'}`}></i>
-                  <p>Trạng thái: {devices.quat.isOn ? 'Bật' : 'Tắt'}</p>
-                  <p>Tốc độ: {devices.quat.speed}</p>
-                  <input
-                    type="range"
-                    min="0"
-                    max="5"
-                    value={devices.quat.speed}
-                    onChange={(e) => updateValue('quat', 'speed', parseInt(e.target.value))}
-                    disabled={!devices.quat.isOn || loading.quat}
-                  />
                   <button
-                    className={`btn-toggle ${devices.quat.isOn ? 'on' : 'off'}`}
-                    onClick={() => toggleDevice('quat')}
-                    disabled={loading.quat}
+                    disabled={loading[device._id]}
+                    onClick={() => toggleCustomDevice(device)}
                   >
-                    {loading.quat ? '⏳...' : (devices.quat.isOn ? 'Tắt' : 'Bật')}
+                    {device.status === "online" ? "Tắt" : "Bật"}
                   </button>
-                </div>
-              </Card>
-            )}
-
-            {/* Điều hòa */}
-            {accessibleDevices.includes('dieuHoa') && (
-              <Card title={deviceMap.dieuHoa.name} className="device-card">
-                <div className="device-content">
-                  <i className={`fas ${deviceMap.dieuHoa.icon} ${devices.dieuHoa.isOn ? 'on' : 'off'}`}></i>
-                  <p>Trạng thái: {devices.dieuHoa.isOn ? 'Bật' : 'Tắt'}</p>
-                  <p>Nhiệt độ: {devices.dieuHoa.temp}°C</p>
-                  <input
-                    type="range"
-                    min="16"
-                    max="30"
-                    value={devices.dieuHoa.temp}
-                    onChange={(e) => updateValue('dieuHoa', 'temp', parseInt(e.target.value))}
-                    disabled={!devices.dieuHoa.isOn || loading.dieuHoa}
-                  />
-                  <button
-                    className={`btn-toggle ${devices.dieuHoa.isOn ? 'on' : 'off'}`}
-                    onClick={() => toggleDevice('dieuHoa')}
-                    disabled={loading.dieuHoa}
-                  >
-                    {loading.dieuHoa ? '⏳...' : (devices.dieuHoa.isOn ? 'Tắt' : 'Bật')}
-                  </button>
-                </div>
-              </Card>
-            )}
-
-            {/* Camera */}
-            {accessibleDevices.includes('camera') && (
-              <Card title={deviceMap.camera.name} className="device-card">
-                <div className="device-content">
-                  <i className={`fas ${deviceMap.camera.icon} ${devices.camera.isOn ? 'on' : 'off'}`}></i>
-                  <p>Trạng thái: {devices.camera.isOn ? 'Bật' : 'Tắt'}</p>
-                  <button
-                    className={`btn-toggle ${devices.camera.isOn ? 'on' : 'off'}`}
-                    onClick={() => toggleDevice('camera')}
-                    disabled={loading.camera}
-                  >
-                    {loading.camera ? '⏳...' : (devices.camera.isOn ? 'Tắt' : 'Bật')}
-                  </button>
-                  <button
-                    className="btn-view"
-                    onClick={viewCamera}
-                    disabled={!devices.camera.isOn || loading.camera}
-                  >
-                    Xem
-                  </button>
-                </div>
-              </Card>
-            )}
+                </Card>
+              ))}
           </div>
 
           {/* Section Cảm Biến */}

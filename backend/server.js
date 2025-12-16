@@ -19,10 +19,8 @@ app.use(cors({
 }));
 
 // Kết nối DB
-mongoose.connect(`${process.env.MONGO_URI}${process.env.MONGO_DB}`, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log("✅ MongoDB Connected"))
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Atlas Connected"))
   .catch(err => console.error("❌ MongoDB Error:", err));
 
 // Initialize MQTT

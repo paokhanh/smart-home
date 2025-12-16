@@ -122,7 +122,8 @@ function initMQTT() {
 async function handleTelemetry(topic, payload) {
   try {
     // Extract houseId and deviceId from topic
-    // Topic format: house/house_001/device/esp32_device_1/telemetry
+   // Topic format: house/{houseId}/device/{deviceId}/telemetry
+
     const parts = topic.split('/');
     const houseId = parts[1]; // house_001 or DB ID
     const deviceId = parts[3]; // esp32_device_1
@@ -137,6 +138,7 @@ async function handleTelemetry(topic, payload) {
     telemetryCache[houseId][deviceId] = {
       sensors: msg.sensors || null,
       devices: msg.devices || null,
+      custom: msg.custom || null,
       power: msg.power || null,
       timestamp: new Date()
     };
@@ -146,6 +148,7 @@ async function handleTelemetry(topic, payload) {
     telemetryCache[mqttCode][deviceId] = {
       sensors: msg.sensors,
       devices: msg.devices,
+      custom: msg.custom || null,
       power: msg.power,
       timestamp: new Date(),
     }

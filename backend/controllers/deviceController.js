@@ -1,6 +1,6 @@
 const Device = require('../models/Device');
 const House = require('../models/House');
-const { publishCommand } = require('../services/mqttService'); // assume you have mqtt client wrapper
+const { publish, publishCommand } = require('../services/mqttService'); // mqtt helper functions
 const mongoose = require('mongoose');
 
   exports.createDevice = async (req, res) => {
@@ -31,11 +31,36 @@ const mongoose = require('mongoose');
       owner: req.user._id,
       permissions: [req.user._id],
       mqttTopicSet: `devices/${hardwareId}/set`, // Format: devices/SOCK_998877/set
+      pin: req.body.pin ? Number(req.body.pin) : undefined, 
       status: 'offline'
     });
 
     await device.save();
     console.log(`✅ Device created: ${name} (${hardwareId}) in house ${houseId}`);
+
+    // Send device config to ESP32 so it can map hardwareId -> pin (optional)
+    try {
+      const configTopic = `house/${house._id}/device/esp32_device_1/config`;
+      const payload = {
+        action: 'add_device',
+        device: {
+          hardwareId: device.hardwareId,
+          type: device.type,
+          pin: device.pin,
+          name: device.name
+        },
+        mqttCode: (await House.findById(houseId)).mqttCode
+      };
+      // Publish device config to ESP32 (best-effort)
+      try {
+        publish(configTopic, payload);
+        console.log('📤 Published device config to ESP32:', payload );
+      } catch (pubErr) {
+        console.error('❌ Publish error while sending device config:', pubErr);
+      }
+    } catch (err) {
+      console.error('❌ Failed to publish device config to ESP32:', err);
+    }
     return res.status(201).json(device);
   } catch (err) {
     console.error('Error creating device:', err);
@@ -56,50 +81,44 @@ exports.getDevicesByHouse = async (req, res) => {
 // Control device (toggle or set)
 exports.controlDevice = async (req, res) => {
   try {
-    const { deviceId } = req.params; 
-    const { action, value, houseId } = req.body; 
+    const { deviceId } = req.params;
+    const { action, value } = req.body;
 
-    console.log(`🎮 Control Request: ID=${deviceId}, Action=${action}, House=${houseId}`);
-
-    if (!houseId) return res.status(400).json({ error: 'House ID required' });
-
-    // ... (Logic tìm kiếm thiết bị giữ nguyên như các bước trước) ...
-    // Tóm tắt: Tìm trong Static Map -> Tìm trong DB -> Fallback
-
-    let mqttDeviceName = null;
-    const deviceMap = { 'den': 'light', 'quat': 'fan', 'dieuHoa': 'ac', 'camera': 'camera' };
-    
-    if (deviceMap[deviceId]) {
-        mqttDeviceName = deviceMap[deviceId];
-    } else {
-        try {
-            const device = await Device.findById(deviceId);
-            if (device) mqttDeviceName = device.hardwareId; 
-        } catch (dbErr) {
-            console.log(`DB Lookup skipped: ${dbErr.message}`);
-        }
+    if (!action) {
+      return res.status(400).json({ error: 'Action is required' });
     }
 
-    if (!mqttDeviceName) mqttDeviceName = deviceId;
-
-    let command = { device: mqttDeviceName, action };
-    if (action === 'set') command.value = value;
-
-    // KIỂM TRA TRƯỚC KHI GỌI HÀM ĐỂ TRÁNH LỖI 500 DO CRASH
-    if (typeof publishCommand !== 'function') {
-        console.error("CRITICAL ERROR: publishCommand is not a function. Check mqttService exports.");
-        return res.status(500).json({ error: "Server internal error: MQTT service unavailable" });
+    const device = await Device.findById(deviceId);
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
     }
 
-    const ok = publishCommand(houseId, 'esp32_device_1', command);
-    
-    if (!ok) return res.status(503).json({ error: 'MQTT broker not connected' });
+    const house = await House.findById(device.houseId);
+    if (!house) {
+      return res.status(404).json({ error: 'House not found' });
+    }
+
+    // Map to MQTT device name - support fixed types and custom devices
+    const typeMap = { light: 'light', fan: 'fan', ac: 'ac', camera: 'camera' };
+    const mqttDevice = typeMap[device.type] || device.hardwareId; // fallback to hardwareId for custom devices
+
+    const command = { device: mqttDevice, action };
+    if (action === 'set' && value !== undefined) command.value = value;
+
+    const ok = publishCommand(
+      house.mqttCode,
+      'esp32_device_1',
+      command
+    );
+
+    if (!ok) {
+      return res.status(503).json({ error: 'MQTT not connected' });
+    }
 
     res.json({ success: true, command });
-
-  } catch (error) {
-    console.error('❌ Control Error:', error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error('❌ Control Error:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 

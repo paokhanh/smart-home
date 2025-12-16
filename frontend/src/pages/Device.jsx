@@ -7,7 +7,7 @@ const Device = () => {
   const [currentHouse, setCurrentHouse] = useState(null);
   const [devices, setDevices] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:'', hardwareId:'', type:'socket', location:'' });
+  const [form, setForm] = useState({ name:'', hardwareId:'', type:'socket', location:'', pin: '' });
 
   useEffect(()=>{
     if(currentHouse) loadDevices();
@@ -30,7 +30,7 @@ const Device = () => {
       await createDevice({...form, houseId: currentHouse._id});
       alert('Thêm thiết bị thành công!');
       setShowAdd(false);
-      setForm({name:'', hardwareId:'', type:'socket', location:''});
+      setForm({name:'', hardwareId:'', type:'socket', location:'', pin: ''});
       loadDevices();
     } catch (err) { 
       const errorMsg = err.response?.data?.message || err.message || 'Thêm thất bại';
@@ -94,6 +94,7 @@ const Device = () => {
             <p><strong>ID:</strong> {d.hardwareId}</p>
             <p><strong>Loại:</strong> {d.type}</p>
             {d.location && <p><strong>Vị trí:</strong> {d.location}</p>}
+            {d.pin !== undefined && d.pin !== null && d.pin !== '' && <p><strong>Chân:</strong> {d.pin}</p>}
             <p>
               <strong>Trạng thái:</strong> 
               <span style={{ 
@@ -147,7 +148,7 @@ const Device = () => {
                   placeholder="VD: Phòng khách, Sân vườn, Phòng ngủ"
                 />
               </div>
-              <div className="form-group">
+                      <div className="form-group">
                 <label>Loại thiết bị</label>
                 <select 
                   value={form.type} 
@@ -160,6 +161,19 @@ const Device = () => {
                   <option value="sensor">Cảm biến</option>
                   <option value="other">Khác</option>
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label>Chân (pin) trên ESP32 (tùy chọn)</label>
+                <input 
+                  value={form.pin} 
+                  onChange={e => setForm({...form, pin: e.target.value})}
+                  placeholder="VD: 27"
+                  type="number"
+                />
+                <small style={{color: '#666', fontSize: '12px'}}>
+                  Nếu bạn muốn ánh xạ thiết bị tới một chân GPIO trên ESP32, nhập số chân ở đây. (Tùy chọn)
+                </small>
               </div>
               <div className="modal-actions">
                 <button onClick={()=>setShowAdd(false)} type="button" className="btn-cancel">Hủy</button>
