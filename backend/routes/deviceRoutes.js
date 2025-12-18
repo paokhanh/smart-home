@@ -13,39 +13,39 @@ const House = require('../models/House');
 router.get('/:houseId/status', authMiddleware, async (req, res) => {
   try {
     const { houseId } = req.params;
-    
+
     // Verify house exists
     const house = await House.findById(houseId);
     if (!house) {
       return res.status(404).json({ error: 'House not found' });
     }
-    
-    // Get latest telemetry from MQTT cache
-    const telemetry = getLatestTelemetry(houseId);
+
+    // Get latest telemetry from MQTT cache using the house's MQTT code
+    const telemetry = getLatestTelemetry(house.mqttCode);
     const espTele = telemetry['esp32_device_1'] || {};
-    
+
     // Map ESP32 device states to frontend format (keep legacy named devices)
     const devices = {
-      den: { 
-        state: espTele.devices?.light ? 'on' : 'off', 
-        brightness: espTele.devices?.light_brightness ?? null 
+      den: {
+        state: espTele.devices?.light ? 'on' : 'off',
+        brightness: espTele.devices?.light_brightness ?? null
       },
-      quat: { 
-        state: espTele.devices?.fan ? 'on' : 'off', 
-        speed: espTele.devices?.fan_speed ?? null 
+      quat: {
+        state: espTele.devices?.fan ? 'on' : 'off',
+        speed: espTele.devices?.fan_speed ?? null
       },
-      dieuHoa: { 
-        state: espTele.devices?.ac ? 'on' : 'off', 
-        temp: espTele.devices?.ac_temp ?? null 
+      dieuHoa: {
+        state: espTele.devices?.ac ? 'on' : 'off',
+        temp: espTele.devices?.ac_temp ?? null
       },
-      camera: { 
-        state: espTele.devices?.camera ? 'on' : 'off' 
+      camera: {
+        state: espTele.devices?.camera ? 'on' : 'off'
       }
     };
-    
+
     // Also collect any custom devices published by the firmware (keyed by hardwareId)
     const customDevices = [];
-    const reserved = new Set(['light','fan','ac','camera','light_brightness','fan_speed','ac_temp']);
+    const reserved = new Set(['light', 'fan', 'ac', 'camera', 'light_brightness', 'fan_speed', 'ac_temp']);
 
     // Check devices block first for any non-reserved keys (legacy)
     if (espTele.devices) {
@@ -71,14 +71,14 @@ router.get('/:houseId/status', authMiddleware, async (req, res) => {
       gas_level: espTele.sensors?.gas_level ?? null,
       motion: espTele.sensors?.motion ?? null
     };
-    
-    res.json({ 
-      status: 'ok', 
-      mqtt_connected: !!getMQTTClient()?.connected, 
-      devices, 
+
+    res.json({
+      status: 'ok',
+      mqtt_connected: !!getMQTTClient()?.connected,
+      devices,
       customDevices,
-      sensors, 
-      raw: espTele 
+      sensors,
+      raw: espTele
     });
   } catch (error) {
     console.error('Error getting device status:', error);
@@ -91,13 +91,13 @@ router.post('/:deviceId/control', authMiddleware, deviceCtrl.controlDevice);
 router.post('/:houseId/:deviceId/toggle', authMiddleware, async (req, res) => {
   try {
     const { houseId, deviceId } = req.params;
-    
+
     // Verify house exists
     const house = await House.findById(houseId);
     if (!house) {
       return res.status(404).json({ error: 'House not found' });
     }
-    
+
     // Map frontend device IDs to ESP32 device names
     const deviceMap = {
       'den': 'light',
@@ -105,7 +105,7 @@ router.post('/:houseId/:deviceId/toggle', authMiddleware, async (req, res) => {
       'dieuHoa': 'ac',
       'camera': 'camera'
     };
-    
+
     let mqttDeviceName = deviceMap[deviceId];
 
     // If not a fixed device key, try to find a DB device by id and use its hardwareId
@@ -127,7 +127,7 @@ router.post('/:houseId/:deviceId/toggle', authMiddleware, async (req, res) => {
 
     // Publish toggle command to MQTT
     const command = { device: mqttDeviceName, action: 'toggle' };
-    const ok = publishCommand(houseId, 'esp32_device_1', command);
+    const ok = publishCommand(house.mqttCode, 'esp32_device_1', command);
 
     if (!ok) {
       return res.status(503).json({ error: 'MQTT broker not connected' });
@@ -145,17 +145,17 @@ router.post('/:houseId/:deviceId/set', authMiddleware, async (req, res) => {
   try {
     const { houseId, deviceId } = req.params;
     const { value } = req.body;
-    
+
     if (typeof value !== 'number') {
       return res.status(400).json({ error: 'Value must be a number' });
     }
-    
+
     // Verify house exists
     const house = await House.findById(houseId);
     if (!house) {
       return res.status(404).json({ error: 'House not found' });
     }
-    
+
     // Map to MQTT control parameter and clamp values
     let command;
     if (deviceId === 'den') {
@@ -170,13 +170,13 @@ router.post('/:houseId/:deviceId/set', authMiddleware, async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Device does not support value setting' });
     }
-    
+
     // Publish command to MQTT
-    const ok = publishCommand(houseId, 'esp32_device_1', command);
+    const ok = publishCommand(house.mqttCode, 'esp32_device_1', command);
     if (!ok) {
       return res.status(503).json({ error: 'MQTT broker not connected' });
     }
-    
+
     res.json({ success: true, message: `Set ${deviceId} to ${command.value}`, command });
   } catch (error) {
     console.error('Error setting device:', error);
@@ -203,5 +203,8 @@ router.post('/:deviceId/permissions/add', authMiddleware, deviceCtrl.addPermissi
 
 // POST /api/devices/:deviceId/permissions/remove - Xóa quyền
 router.post('/:deviceId/permissions/remove', authMiddleware, deviceCtrl.removePermission);
+
+// DELETE /api/devices/:deviceId - Xóa thiết bị
+router.delete('/:deviceId', authMiddleware, deviceCtrl.deleteDevice);
 
 module.exports = router;

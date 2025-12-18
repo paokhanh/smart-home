@@ -1,0 +1,190 @@
+/* Device Renderer Styles */
+.device-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    border: 1px solid #eef2f6;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+}
+
+.device-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.device-icon-container {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    background-color: #f1f5f9;
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+
+.device-info {
+    flex: 1;
+}
+
+.device-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #1e293b;
+    margin: 0;
+}
+
+.device-status-text {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+}
+
+/* Active State Styles */
+.device-card.active .device-icon-container {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.device-card.active.warm-device .device-icon-container {
+    background-color: #ffedd5;
+    color: #ea580c;
+    /* Orange for heater/AC */
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+input:checked+.slider {
+    background-color: #2563eb;
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px #2563eb;
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+/* Controls Container */
+.device-controls {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Range Slider Styling */
+.range-slider-container {
+    margin-top: 12px;
+}
+
+.range-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.custom-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 5px;
+    outline: none;
+}
+
+.custom-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    transition: background .15s ease-in-out;
+}
+
+.custom-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Sensor Styles */
+.sensor-value-large {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 8px 0;
+}
+
+.sensor-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* Loading State */
+.loading-overlay {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}

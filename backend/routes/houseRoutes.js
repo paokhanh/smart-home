@@ -5,6 +5,7 @@ const User = require("../models/User");
 const authMiddleware = require("../middleware/authMiddleware");
 const mqttService = require('../services/mqttService');
 const mongoose = require("mongoose");
+const Device = require("../models/Device");
 
 // Tạo house mới (người dùng đã đăng nhập thành owner)
 router.post("/", authMiddleware, async (req, res) => {
@@ -25,7 +26,7 @@ router.post("/", authMiddleware, async (req, res) => {
       owners: [req.user._id],
       members: [{ userId: req.user._id, role: "Owner" }]
     });
-    
+
     console.log("🔍 House object before save:", house);
     await house.save();
     console.log("✅ House created and saved:", house._id);
@@ -37,13 +38,15 @@ router.post("/", authMiddleware, async (req, res) => {
       activeHouse: house._id
     });
     console.log("👤 User updated:", updateResult ? "Success" : "Failed");
-        // 📡 Gửi mqttCode xuống ESP32 sau khi house được tạo
+    // 📡 Gửi mqttCode xuống ESP32 sau khi house được tạo
     try {
-      const topic = `device/esp32_device_1/config`;
-      const payload = JSON.stringify({ mqttCode: house.mqttCode });
+      const topic = `device/esp32_device_1/config/bind`;
+      // send a bind message the firmware understands (retain so device gets it on connect)
+      const payloadObj = { type: 'bind_house', houseId: house.mqttCode };
+      const payload = JSON.stringify(payloadObj);
 
-      mqttService.publish(topic, payload);
-      console.log("📤 Sent config to ESP32:", payload);
+      mqttService.publish(topic, payloadObj, { retain: true });
+      console.log("📤 Sent retained bind config to ESP32:", payload);
 
     } catch (err) {
       console.error("❌ Failed to send MQTT config to ESP32:", err);
@@ -94,7 +97,7 @@ router.put("/:houseId", authMiddleware, async (req, res) => {
   try {
     const { houseId } = req.params;
     const { name, address } = req.body;
-    
+
     const house = await House.findById(houseId);
     if (!house) return res.status(404).json({ message: "House not found" });
 
@@ -185,7 +188,7 @@ router.post("/:houseId/invite", authMiddleware, async (req, res) => {
   try {
     const { houseId } = req.params;
     const { email, role = "Member" } = req.body;
-    
+
     // Validate email
     if (!email || typeof email !== 'string' || !email.trim()) {
       console.log("❌ Missing or invalid email");
@@ -252,6 +255,64 @@ router.post("/:houseId/invite", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("❌ Error inviting user:", err.message);
     res.status(500).json({ message: "Server error: " + err.message });
+  }
+});
+
+// Bind House (Gửi lại lệnh bind cho ESP32 + Đồng bộ lại cấu hình thiết bị)
+router.post("/:houseId/bind", authMiddleware, async (req, res) => {
+  try {
+    const { houseId } = req.params;
+    const house = await House.findById(houseId);
+    if (!house) return res.status(404).json({ message: "House not found" });
+
+    // Kiểm tra quyền owner
+    if (!house.owners.some(id => id.equals(req.user._id))) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    // 1. Gửi bind message
+    const bindTopic = `device/esp32_device_1/config/bind`;
+    const bindPayload = { type: 'bind_house', houseId: house.mqttCode };
+
+    // Retain = true để đảm bảo firmware nhận được khi connect
+    const ok = mqttService.publish(bindTopic, bindPayload, { retain: true });
+
+    if (ok) {
+      console.log("📤 Sent bind config:", bindPayload);
+
+      // 2. Gửi lại config cho TOÀN BỘ thiết bị trong nhà (để firmware học lại)
+      const devices = await Device.find({ houseId: house._id });
+      console.log(`🔄 Resyncing ${devices.length} devices for house ${house.name}`);
+
+      for (const device of devices) {
+        const configTopic = `device/esp32_device_1/config/add_device/${device.hardwareId}`;
+        const configPayload = {
+          type: 'add_device',
+          device: {
+            hardwareId: device.hardwareId,
+            type: device.type,
+            pin: device.pin,
+            name: device.name
+          },
+          houseId: house.mqttCode
+        };
+        // Retain = true để đảm bảo firmware nhận được khi connect
+        mqttService.publish(configTopic, configPayload, { retain: true });
+        console.log(`   👉 Resent config for ${device.hardwareId}`);
+      }
+
+      res.json({
+        message: `Sync command sent. Re-bound house and synced ${devices.length} devices.`,
+        houseId: house.mqttCode,
+        syncedDevices: devices.length
+      });
+    } else {
+      res.status(503).json({ message: "MQTT not connected" });
+    }
+
+  } catch (err) {
+    console.error("❌ Error binding house:", err);
+    res.status(500).json({ message: err.message });
   }
 });
 

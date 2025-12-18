@@ -8,7 +8,6 @@ const powerConsumptionSchema = new mongoose.Schema({
   },
   deviceId: {
     type: String,
-    enum: ['den', 'quat', 'dieuHoa', 'camera'],
     required: true
   },
   lightWh: {

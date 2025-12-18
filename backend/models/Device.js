@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const DeviceSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  hardwareId: { type: String, required: true, unique: true },
+  hardwareId: { type: String, required: true }, // Removed unique: true to allow same hardwareId in different houses
   type: { type: String, default: 'socket' }, // socket, sensor, camera, etc
   location: { type: String }, // Vị trí: Phòng khách, Phòng ngủ, Sân vườn, etc.
   houseId: { type: mongoose.Schema.Types.ObjectId, ref: 'House', required: true },

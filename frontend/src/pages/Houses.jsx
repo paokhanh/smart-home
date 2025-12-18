@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllHouses, createHouse, deleteHouse, updateHouse } from '../services/houseService';
+import { getAllHouses, createHouse, deleteHouse, updateHouse, bindHouse } from '../services/houseService';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Card from '../components/Card';
 import Members from '../components/Members';
@@ -69,7 +69,7 @@ const Houses = () => {
 
   const handleDelete = async (houseId) => {
     if (!window.confirm('Bạn chắc chắn muốn xóa nhà này?')) return;
-    
+
     try {
       await deleteHouse(houseId);
       await fetchHouses();
@@ -161,6 +161,17 @@ const Houses = () => {
                   <button className="btn-members" onClick={() => setSelectedHouseForMembers(house)}>
                     Thành viên
                   </button>
+                  <button className="btn-sync" onClick={async () => {
+                    if (!window.confirm('Bạn có muốn đồng bộ lại thiết bị với nhà này không?')) return;
+                    try {
+                      await bindHouse(house._id);
+                      alert('Đã gửi lệnh đồng bộ! Hãy khởi động lại ESP32 nếu cần.');
+                    } catch (e) {
+                      alert('Lỗi: ' + e.message);
+                    }
+                  }} style={{ backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '5px' }}>
+                    Sync
+                  </button>
                   <button className="btn-delete" onClick={() => handleDelete(house._id)}>
                     Xóa
                   </button>
@@ -171,8 +182,8 @@ const Houses = () => {
         </div>
       </div>
       {selectedHouseForMembers && (
-        <Members 
-          houseId={selectedHouseForMembers._id} 
+        <Members
+          houseId={selectedHouseForMembers._id}
           onClose={() => setSelectedHouseForMembers(null)}
         />
       )}

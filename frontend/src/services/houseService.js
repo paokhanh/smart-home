@@ -1,5 +1,5 @@
 //import axios from 'axios';
-import {api as apiClient } from './api';
+import { api as apiClient } from './api';
 // const API_BASE_URL = 'http://localhost:5000/api/houses';
 
 // const getToken = () => localStorage.getItem('token');
@@ -96,6 +96,17 @@ export const updateMemberPermissions = async (houseId, memberId, permissionsData
     return response.data;
   } catch (error) {
     console.error('Error updating member permissions:', error);
+    throw error;
+  }
+};
+
+// Gửi lệnh re-bind house
+export const bindHouse = async (houseId) => {
+  try {
+    const response = await apiClient.post(`/houses/${houseId}/bind`);
+    return response.data;
+  } catch (error) {
+    console.error('Error binding house:', error);
     throw error;
   }
 };

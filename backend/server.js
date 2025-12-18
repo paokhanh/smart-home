@@ -33,6 +33,10 @@ app.use("/api/houses", require("./routes/houseRoutes"));
 app.use("/api/power-stats", require("./routes/powerStatsRoutes"));
 app.use("/api/devices", require("./routes/deviceRoutes"));
 app.use("/api/sensors", require('./routes/sensorRoutes'));
-app.use("/api/schedules", require('./routes/scheduleRoutes'));;
+app.use("/api/schedules", require('./routes/scheduleRoutes'));
+
+// Debug endpoints (admin only)
+app.use('/api/debug', require('./routes/debugRoutes'));
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server chạy tại http://localhost:${PORT}`));

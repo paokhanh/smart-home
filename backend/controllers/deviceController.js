@@ -3,7 +3,7 @@ const House = require('../models/House');
 const { publish, publishCommand } = require('../services/mqttService'); // mqtt helper functions
 const mongoose = require('mongoose');
 
-  exports.createDevice = async (req, res) => {
+exports.createDevice = async (req, res) => {
   try {
     const { name, hardwareId, type, houseId, location } = req.body;
     if (!name || !hardwareId || !houseId) {
@@ -16,10 +16,10 @@ const mongoose = require('mongoose');
       return res.status(404).json({ message: 'House not found' });
     }
 
-    // Check if hardwareId already exists
-    const existingDevice = await Device.findOne({ hardwareId });
+    // Check if hardwareId already exists IN THIS HOUSE
+    const existingDevice = await Device.findOne({ hardwareId, houseId });
     if (existingDevice) {
-      return res.status(400).json({ message: 'Device with this hardwareId already exists' });
+      return res.status(400).json({ message: 'Device with this hardwareId already exists in this house' });
     }
 
     const device = new Device({
@@ -31,30 +31,49 @@ const mongoose = require('mongoose');
       owner: req.user._id,
       permissions: [req.user._id],
       mqttTopicSet: `devices/${hardwareId}/set`, // Format: devices/SOCK_998877/set
-      pin: req.body.pin ? Number(req.body.pin) : undefined, 
+      pin: req.body.pin ? Number(req.body.pin) : undefined,
       status: 'offline'
     });
 
     await device.save();
     console.log(`✅ Device created: ${name} (${hardwareId}) in house ${houseId}`);
 
+    // Automatically migrate legacy power records to this new hardwareId when appropriate
+    // try {
+    //   const PowerConsumption = require('../models/PowerConsumption');
+    //   const legacyMap = { light: 'den', fan: 'quat', camera: 'camera', ac: 'dieuHoa', dieuHoa: 'dieuHoa' };
+    //   const legacyKey = legacyMap[device.type];
+    //   if (legacyKey) {
+    //     const result = await PowerConsumption.updateMany(
+    //       { houseId: device.houseId, deviceId: legacyKey },
+    //       { $set: { deviceId: device.hardwareId } }
+    //     );
+    //     if (result.matchedCount > 0) {
+    //       console.log(`🔁 Migrated ${result.matchedCount} legacy power records from '${legacyKey}' to '${device.hardwareId}'`);
+    //     }
+    //   }
+    // } catch (migErr) {
+    //   console.error('❌ Error migrating legacy power records:', migErr);
+    // }
+
     // Send device config to ESP32 so it can map hardwareId -> pin (optional)
     try {
-      const configTopic = `house/${house._id}/device/esp32_device_1/config`;
-      const payload = {
-        action: 'add_device',
+      // Firmware subscribes to config subtopics so we publish into a subtopic per device
+      const configTopic = `device/esp32_device_1/config/add_device/${device.hardwareId}`;
+      const payloadObj = {
+        type: 'add_device',
         device: {
           hardwareId: device.hardwareId,
           type: device.type,
           pin: device.pin,
           name: device.name
         },
-        mqttCode: (await House.findById(houseId)).mqttCode
+        houseId: house?.mqttCode
       };
-      // Publish device config to ESP32 (best-effort)
+      // Publish device config to ESP32 (best-effort, retained in case device reconnects)
       try {
-        publish(configTopic, payload);
-        console.log('📤 Published device config to ESP32:', payload );
+        publish(configTopic, payloadObj, { retain: true });
+        console.log('📤 Published retained device config to ESP32 (subtopic):', configTopic, payloadObj);
       } catch (pubErr) {
         console.error('❌ Publish error while sending device config:', pubErr);
       }
@@ -78,49 +97,43 @@ exports.getDevicesByHouse = async (req, res) => {
   }
 };
 
-// Control device (toggle or set)
 exports.controlDevice = async (req, res) => {
   try {
     const { deviceId } = req.params;
-    const { action, value } = req.body;
+    const { action, houseId } = req.body;
 
-    if (!action) {
-      return res.status(400).json({ error: 'Action is required' });
+    console.log('🔧 controlDevice called', { deviceId, action, houseId });
+
+    if (!houseId) {
+      return res.status(400).json({ error: 'houseId is required' });
     }
+
+    const house = await House.findById(houseId);
+    if (!house) return res.status(404).json({ error: 'House not found' });
 
     const device = await Device.findById(deviceId);
-    if (!device) {
-      return res.status(404).json({ error: 'Device not found' });
-    }
+    if (!device) return res.status(404).json({ error: 'Device not found' });
 
-    const house = await House.findById(device.houseId);
-    if (!house) {
-      return res.status(404).json({ error: 'House not found' });
-    }
+    const command = {
+      hardwareId: device.hardwareId,
+      action
+    };
+    // include numeric value if provided (for 'set' actions)
+    if (req.body.value !== undefined) command.value = req.body.value;
 
-    // Map to MQTT device name - support fixed types and custom devices
-    const typeMap = { light: 'light', fan: 'fan', ac: 'ac', camera: 'camera' };
-    const mqttDevice = typeMap[device.type] || device.hardwareId; // fallback to hardwareId for custom devices
-
-    const command = { device: mqttDevice, action };
-    if (action === 'set' && value !== undefined) command.value = value;
-
-    const ok = publishCommand(
-      house.mqttCode,
-      'esp32_device_1',
-      command
-    );
-
+    // Use publishCommand to ensure topic = house/{houseId}/device/{deviceId}/control
+    const ok = publishCommand(house.mqttCode, 'esp32_device_1', command);
     if (!ok) {
-      return res.status(503).json({ error: 'MQTT not connected' });
+      return res.status(503).json({ error: 'MQTT broker not connected' });
     }
 
     res.json({ success: true, command });
   } catch (err) {
-    console.error('❌ Control Error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Error in controlDevice:', err);
+    res.status(500).json({ error: err.message || 'Internal server error' });
   }
 };
+
 
 // Update device telemetry/status (optional if you want backend to receive updates via MQTT and write to DB)
 exports.updateTelemetry = async (req, res) => {
@@ -172,4 +185,41 @@ exports.removePermission = async (req, res) => {
     await device.save();
     res.json(device);
   } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+// DELETE /api/devices/:deviceId - Xóa thiết bị (owner hoặc admin)
+exports.deleteDevice = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const device = await Device.findById(deviceId);
+    if (!device) return res.status(404).json({ message: 'Device not found' });
+
+    // only owner or admin can delete
+    if (req.user.role !== 'Admin' && !device.owner.equals(req.user._id)) {
+      return res.status(403).json({ message: 'No permission to delete' });
+    }
+
+    // Remove device document
+    await Device.deleteOne({ _id: deviceId });
+
+    // Notify ESP to remove mapping (best-effort)
+    try {
+      const payload = {
+        type: 'remove_device',
+        device: { hardwareId: device.hardwareId }
+      };
+      // Publish a removal message (non-retained) to instruct ESP to drop mapping
+      publish(`device/esp32_device_1/config/remove_device/${device.hardwareId}`, payload, { retain: false });
+      // Also clear any retained add_device entry for this hardwareId (publish empty retained)
+      publish(`device/esp32_device_1/config/add_device/${device.hardwareId}`, '', { retain: true });
+      console.log('📤 Published device removal to ESP32 and cleared retained add:', payload);
+    } catch (pubErr) {
+      console.error('❌ Failed to publish device removal to ESP32:', pubErr);
+    }
+
+    res.json({ message: 'Device deleted' });
+  } catch (err) {
+    console.error('Error deleting device:', err);
+    res.status(500).json({ message: err.message });
+  }
 };

@@ -28,16 +28,26 @@ export const controlDevice = async (deviceId, action, value, houseId) => {
   }
 };
 
-// BỔ SUNG CẦN THIẾT CHO DASHBOARD
-// -----------------------------
+// Delete device
+export const deleteDevice = async (deviceId) => {
+  try {
+    const response = await api.delete(`/devices/${deviceId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting device:', error);
+    throw error;
+  }
+};
 
-// Toggle ON/OFF - ESP32 compatible
-export const toggleDevice = async (houseId, deviceKey) => {
+// BỔ SUNG CẦN THIẾT CHO DASHBOARD
+// Toggle fixed device (den/quat/dieuHoa/camera) - ESP32 compatible
+// Signature kept as (deviceKey, houseId) to match current Dashboard usage
+export const toggleDevice = async (deviceKey, houseId) => {
   try {
     const response = await api.post(`/devices/${houseId}/${deviceKey}/toggle`);
     return response.data;
   } catch (error) {
-    console.error("Error toggling device:", error);
+    console.error('Error toggling fixed device:', error);
     throw error;
   }
 };
